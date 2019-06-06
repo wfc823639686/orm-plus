@@ -100,11 +100,3 @@ class Model(dict, metaclass=ModelMetaclass):
         sql = 'delete from %s where %s = %s' % (self.__table__, self.__primary__, getattr(self, self.__name_mappings__[self.__primary__], None))
         print('SQL: %s' % sql)
 
-
-class User(Model):
-    us_id = IntegerField('id', primary=True)
-    us_name = StringField('name', notnull=False)
-
-
-u = User(id=1, name='wfc')
-u.remove_by_id()
