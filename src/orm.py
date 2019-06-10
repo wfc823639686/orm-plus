@@ -84,19 +84,84 @@ class Model(dict, metaclass=ModelMetaclass):
                 args.append(arg)
         return fields, params, args
 
-    def save(self):
+    def name_mappings(self, n):
+        return self.__name_mappings__[n]
+
+    def insert(self):
         fields, params, args = self.get_params()
-        sql = 'insert into %s (%s) values (%s)' % (self.__table__, ','.join(fields), ','.join(params))
-        print('SQL: %s' % sql)
-        print('ARGS: %s' % str(args))
+        sql = 'insert into {} ({}) values ({})'.format(self.__table__, ','.join(fields), ','.join(params))
+        print('SQL: {}'.format(sql))
+        print('ARGS: {}'.format(str(args)))
 
     def update_by_id(self):
         fields, params, args = self.get_params(False)
-        sql = 'update %s set %s where %s = %s' % (self.__table__, ','.join(map(lambda x: x + '=?', fields)), self.__primary__, getattr(self, self.__name_mappings__[self.__primary__], None))
-        print('SQL: %s' % sql)
-        print('ARGS: %s' % str(args))
+        sql = 'update {} set {} where {} = {}'.format(self.__table__, ','.join(map(lambda x: x + '=?', fields)), self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
+        print('SQL: {}'.format(sql))
+        print('ARGS: {}'.format(str(args)))
 
-    def remove_by_id(self):
-        sql = 'delete from %s where %s = %s' % (self.__table__, self.__primary__, getattr(self, self.__name_mappings__[self.__primary__], None))
-        print('SQL: %s' % sql)
+    def delete_by_id(self):
+        sql = 'delete from {} where {} = {}'.format(self.__table__, self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
+        print('SQL: {}'.format(sql))
+
+    def _get_all_fields(self):
+        r = ['{} AS `{}`'.format(self.__primary__, self.name_mappings(self.__primary__))]
+        for n in self.__mappings__:
+            r.append('{} AS `{}`'.format(n, self.__name_mappings__[n]))
+        return ','.join(r)
+
+    def select_by_id(self, id):
+        sql = 'select {} from {} where {} = {}'.format(self._get_all_fields(), self.__table__, self.__primary__, id)
+        print('SQL: {}'.format(sql))
+
+    def select(self, ew):
+        sql = 'select {} from {} where {}'.format(self._get_all_fields(), self.__table__, ew.get_where_sql())
+        print('SQL: {}'.format(sql))
+
+
+class EntityWrapper(object):
+
+    def __init__(self):
+        self.ors = [[]]
+        self.index = 0
+
+    def eq(self, n, v):
+        self.ors[self.index].append("{} = '{}'".format(n, v))
+        return self
+
+    def ne(self, n, v):
+        self.ors[self.index].append("{} = '{}'".format(n, v))
+        return self
+
+    def like_left(self, n, v):
+        self.ors[self.index].append("{} like '%{}'".format(n, v))
+        return self
+
+    def like_right(self, n, v):
+        self.ors[self.index].append("{} like '{}%'".format(n, v))
+        return self
+
+    @staticmethod
+    def to_str(x):
+        if not isinstance(x, str):
+            return str(x)
+        else:
+            return x
+
+    def inside(self, n, *args):
+
+        self.ors[self.index].append("{} in ({})".format(n, ','.join(map(EntityWrapper.to_str, args))))
+        return self
+
+    def other(self):
+        self.ors.append([])
+        self.index = self.index + 1
+        return self
+
+    def get_where_sql(self):
+        r = []
+        for a in self.ors:
+            r.append('(' + ' and '.join(a) + ')')
+        if r.__len__() == 1:
+            return r.__getitem__(0)
+        return ' or '.join(r)
 
