@@ -68,13 +68,13 @@ class Model(dict, metaclass=ModelMetaclass):
     def __setattr__(self, key, value):
         self[key] = value
 
-    def get_params(self, all = True):
+    def get_params(self, is_all=True):
         fields = []
         params = []
         args = []
         for k, v in self.__mappings__.items():
             arg = getattr(self, self.__name_mappings__[k], None)
-            if not all and arg is not None:
+            if not is_all and arg is not None:
                 fields.append(k)
                 params.append('?')
                 args.append(arg)
