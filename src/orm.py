@@ -226,9 +226,12 @@ def get_params(s):
     return re.findall(p1, s)
 
 
-def rep_param(s, n, v):
-    f = '#{}#'.format(n)
-    return s.replace(f, "'{}'".format(str(v)))
+def rep_params(s, ps):
+    dps = get_params(s)
+    for dp in dps:
+        f = '#{}#'.format(dp)
+        s = s.replace(f, "'{}'".format(str(ps[dp])))
+    return s
 
 
 def select_list(sql, ps, cdt):
@@ -238,13 +241,11 @@ def select_list(sql, ps, cdt):
     for i, v in enumerate(ds):
         if eval(cdt[i]):
             s = ds[i]
-            params = get_params(s)
-            for p in params:
-                s = rep_param(s, p, ps[p])
-            print(s)
             sql = sql.replace(ds[i], s)
         else:
             sql = sql.replace(ds[i], '')
     print('src:' + sql)
     sql = sql.replace('{', '').replace('}', '')
+    sql = rep_params(sql, ps)
     print('final: ' + sql)
+    return query_list(sql)

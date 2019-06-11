@@ -25,9 +25,11 @@ r = u.select(ew, pi=1)
 sql = """select * from sys_user
     where 1=1
     {and name = #name#}
+    and email like #email#
     {and user_id = #id#}"""
 sql1 = """select * from sys_user"""
 # (?<=#)(\S+)(?=#)
 # matchObj = re.match(r'[(](.*?)[)]', "select aa from (sys_user)")
 
-orm.select_list(sql, {'name': 'wfc', 'id': 0}, ["ps['name'] != None", "ps['id'] != 0"])
+r = orm.select_list(sql, {'name': '王凤晨', 'id': 0, 'email': 'sfd%'}, ["ps['name'] != None", "ps['id'] != 0"])
+print(r)
