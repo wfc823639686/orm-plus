@@ -89,6 +89,10 @@ class Model(dict, metaclass=ModelMetaclass):
     def __init__(self, **kw):
         super(Model, self).__init__(**kw)
 
+    def set_dict(self, d):
+        for i in d.keys():
+            self.setdefault(i, d[i])
+
     def __getattr__(self, key):
         try:
             return self[key]
@@ -235,7 +239,7 @@ def rep_params(s, ps):
     return s
 
 
-def select_list(sql, ps, cdt):
+def select_list(sql, ps, cdt, cl=None):
     ds = get_dynamic_sql(sql)
     if ds.__len__() != cdt.__len__():
         assert AttributeError('condition is error')
@@ -249,4 +253,13 @@ def select_list(sql, ps, cdt):
     sql = sql.replace('{', '').replace('}', '')
     sql = rep_params(sql, ps)
     print('final: ' + sql)
-    return query_list(sql)
+    r = query_list(sql)
+    if r and cl:
+        results = []
+        for i in r:
+            a = cl()
+            a.set_dict(i)
+            results.append(a)
+        return results
+    else:
+        return r

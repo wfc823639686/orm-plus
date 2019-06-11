@@ -1,5 +1,6 @@
 import orm
-import re
+import json
+import json_encoder as je
 
 orm.connect('117.50.68.68', 33306, 'developer', 'LYDsj!2019', 'smarttourismcloud_test')
 
@@ -24,12 +25,33 @@ r = u.select(ew, pi=1)
 
 sql = """select * from sys_user
     where 1=1
-    {and name = #name#}
-    and email like #email#
+    {and name = #name#
+        and email like #email#
+    }
     {and user_id = #id#}"""
-sql1 = """select * from sys_user"""
 # (?<=#)(\S+)(?=#)
 # matchObj = re.match(r'[(](.*?)[)]', "select aa from (sys_user)")
 
-r = orm.select_list(sql, {'name': '王凤晨', 'id': 0, 'email': 'sfd%'}, ["ps['name'] != None", "ps['id'] != 0"])
-print(r)
+# r = orm.select_list(sql, {'name': None, 'id': 0, 'email': 'sfd%'}, ["ps['name'] != None", "ps['id'] != 0"])
+# print(r)
+
+sql1 = """select RD_Date `date`, SUM(RD_Flow) flow
+                from T_TJ_FlowRealTime_Day
+                where RD_DataSource=#dataSource# AND RD_ObjType=#objType#
+                { and RD_FJNM like concat(#fjnm#,'____')}
+                { and RD_Date >= #startDate#}
+                { and RD_Date <= #endDate#}
+                group by RD_Date
+                order by RD_Date"""
+
+params = {
+    'dataSource': '04',
+    'objType': '02',
+    'fjnm': '0000',
+    'startDate': None,
+    'endDate': None
+}
+cdt = ["ps['fjnm'].__len__() > 10", "ps['startDate'] != None", "ps['endDate'] != None"]
+r1 = orm.select_list(sql1, params, cdt, cl=User)
+print(r1)
+print(json.dumps(r1, cls=je.JsonEncoder))
