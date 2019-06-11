@@ -6,7 +6,7 @@ db = None
 
 def connect(host, port, user, psw, db_name):
     global db
-    db = pymysql.connect(host=host, port=port, user=user, password=psw,database=db_name)
+    db = pymysql.connect(host=host, port=port, user=user, password=psw, database=db_name)
 
 
 def query_one(sql):
@@ -53,9 +53,9 @@ class IntegerField(Field):
 
 class ModelMetaclass(type):
 
-    def __new__(cls, name, bases, attrs):
+    def __new__(mcs, name, bases, attrs):
         if name == 'Model':
-            return type.__new__(cls, name, bases, attrs)
+            return type.__new__(mcs, name, bases, attrs)
         print('Found model: %s' % name)
         table_name = name
         mappings = dict()
@@ -80,7 +80,7 @@ class ModelMetaclass(type):
         attrs['__name_mappings__'] = name_mappings
         attrs['__table__'] = table_name
         attrs['__primary__'] = primary
-        return type.__new__(cls, name, bases, attrs)
+        return type.__new__(mcs, name, bases, attrs)
 
 
 class Model(dict, metaclass=ModelMetaclass):
