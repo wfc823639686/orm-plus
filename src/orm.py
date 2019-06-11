@@ -1,4 +1,30 @@
-import functools
+import pymysql
+import re
+
+db = None
+
+
+def connect(host, port, user, psw, db_name):
+    global db
+    db = pymysql.connect(host=host, port=port, user=user, password=psw,database=db_name)
+
+
+def query_one(sql):
+    cursor = db.cursor()
+    cursor.execute(sql)
+    return cursor.fetchone()
+
+
+def query_list(sql):
+    cursor = db.cursor()
+    cursor.execute(sql)
+    return cursor.fetchall()
+
+
+def query_count(sql):
+    cursor = db.cursor()
+    cursor.execute(sql)
+    return cursor.fetchone()[0]
 
 
 class Field(object):
@@ -31,10 +57,13 @@ class ModelMetaclass(type):
         if name == 'Model':
             return type.__new__(cls, name, bases, attrs)
         print('Found model: %s' % name)
+        table_name = name
         mappings = dict()
         name_mappings = dict()
         primary = None
         for k, v in attrs.items():
+            if k == 'table_name':
+                table_name = v
             if isinstance(v, Field):
                 # 别名映射处理
                 print('name %s as %s' % (k, v.name))
@@ -49,7 +78,7 @@ class ModelMetaclass(type):
         attrs.pop(primary)
         attrs['__mappings__'] = mappings
         attrs['__name_mappings__'] = name_mappings
-        attrs['__table__'] = name
+        attrs['__table__'] = table_name
         attrs['__primary__'] = primary
         return type.__new__(cls, name, bases, attrs)
 
@@ -95,12 +124,15 @@ class Model(dict, metaclass=ModelMetaclass):
 
     def update_by_id(self):
         fields, params, args = self.get_params(False)
-        sql = 'update {} set {} where {} = {}'.format(self.__table__, ','.join(map(lambda x: x + '=?', fields)), self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
+        sql = 'update {} set {} where {} = {}'\
+            .format(self.__table__, ','.join(map(lambda x: x + '=?', fields)), self.__primary__,
+                    getattr(self, self.name_mappings(self.__primary__), None))
         print('SQL: {}'.format(sql))
         print('ARGS: {}'.format(str(args)))
 
     def delete_by_id(self):
-        sql = 'delete from {} where {} = {}'.format(self.__table__, self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
+        sql = 'delete from {} where {} = {}'\
+            .format(self.__table__, self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
         print('SQL: {}'.format(sql))
 
     def _get_all_fields(self):
@@ -113,9 +145,31 @@ class Model(dict, metaclass=ModelMetaclass):
         sql = 'select {} from {} where {} = {}'.format(self._get_all_fields(), self.__table__, self.__primary__, id)
         print('SQL: {}'.format(sql))
 
-    def select(self, ew):
-        sql = 'select {} from {} where {}'.format(self._get_all_fields(), self.__table__, ew.get_where_sql())
-        print('SQL: {}'.format(sql))
+    def select(self, ew, pi=0, size=10):
+        if pi != 0:
+            count_sql = 'select count(0) from {} where {}'.format(self.__table__, ew.get_where_sql())
+            cr = query_one(count_sql)
+            if cr != 0:
+                if pi == 1:
+                    limit = '{}'.format(size)
+                else:
+                    limit = '{}, {}'.format((pi - 1) * size, size)
+                sql = 'select {} from {} where {} limit {}'\
+                    .format(self._get_all_fields(), self.__table__, ew.get_where_sql(), limit)
+                print('SQL: {}'.format(sql))
+                return query_list(sql)
+        else:
+            sql = 'select {} from {} where {}' \
+                .format(self._get_all_fields(), self.__table__, ew.get_where_sql())
+            print('SQL: {}'.format(sql))
+            return query_list(sql)
+
+
+def to_str(x):
+    if not isinstance(x, str):
+        return str(x)
+    else:
+        return x
 
 
 class EntityWrapper(object):
@@ -129,27 +183,23 @@ class EntityWrapper(object):
         return self
 
     def ne(self, n, v):
-        self.ors[self.index].append("{} = '{}'".format(n, v))
+        self.ors[self.index].append("{} != '{}'".format(n, v))
         return self
 
     def like_left(self, n, v):
-        self.ors[self.index].append("{} like '%{}'".format(n, v))
-        return self
-
-    def like_right(self, n, v):
         self.ors[self.index].append("{} like '{}%'".format(n, v))
         return self
 
-    @staticmethod
-    def to_str(x):
-        if not isinstance(x, str):
-            return str(x)
-        else:
-            return x
+    def like_right(self, n, v):
+        self.ors[self.index].append("{} like '%{}'".format(n, v))
+        return self
 
     def inside(self, n, *args):
+        self.ors[self.index].append("{} in ({})".format(n, ','.join(map(to_str, args))))
+        return self
 
-        self.ors[self.index].append("{} in ({})".format(n, ','.join(map(EntityWrapper.to_str, args))))
+    def not_inside(self, n, *args):
+        self.ors[self.index].append("{} not in ({})".format(n, ','.join(map(to_str, args))))
         return self
 
     def other(self):
@@ -165,3 +215,36 @@ class EntityWrapper(object):
             return r.__getitem__(0)
         return ' or '.join(r)
 
+
+def get_dynamic_sql(s):
+    p1 = re.compile(r'[{](.*?)[}]', re.S)
+    return re.findall(p1, s)
+
+
+def get_params(s):
+    p1 = re.compile(r'[#](.*?)[#]', re.S)
+    return re.findall(p1, s)
+
+
+def rep_param(s, n, v):
+    f = '#{}#'.format(n)
+    return s.replace(f, "'{}'".format(str(v)))
+
+
+def select_list(sql, ps, cdt):
+    ds = get_dynamic_sql(sql)
+    if ds.__len__() != cdt.__len__():
+        assert AttributeError('condition is error')
+    for i, v in enumerate(ds):
+        if eval(cdt[i]):
+            s = ds[i]
+            params = get_params(s)
+            for p in params:
+                s = rep_param(s, p, ps[p])
+            print(s)
+            sql = sql.replace(ds[i], s)
+        else:
+            sql = sql.replace(ds[i], '')
+    print('src:' + sql)
+    sql = sql.replace('{', '').replace('}', '')
+    print('final: ' + sql)

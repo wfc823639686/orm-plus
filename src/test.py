@@ -1,9 +1,13 @@
 import orm
+import re
+
+orm.connect('117.50.68.68', 33306, 'developer', 'LYDsj!2019', 'smarttourismcloud_test')
 
 
 class User(orm.Model):
-    us_id = orm.IntegerField('id', primary=True)
-    us_name = orm.StringField('name', notnull=False)
+    table_name = 'sys_user'
+    user_id = orm.IntegerField('id', primary=True)
+    name = orm.StringField('name', notnull=False)
 
 
 u = User(id=1, name='wfc')
@@ -11,7 +15,19 @@ u = User(id=1, name='wfc')
 # u.get_by_id(2)
 
 ew = orm.EntityWrapper()
-ew.eq('name', 'wfc').ne('sex', '1').inside('aa', 1, 2)\
-    .other().eq('name', 'aaa').ne('sex', '0').like_left('hh', 11)
+# ew.eq('name', 'wfc').ne('sex', '1').inside('status', 1, 2)\
+#     .other().eq('name', 'aaa').ne('sex', '0').like_left('email', '8236')
+ew.like_left('email', '82')
 # print(ew.get_where_sql())
-u.select(ew)
+r = u.select(ew, pi=1)
+# print(str(r))
+
+sql = """select * from sys_user
+    where 1=1
+    {and name = #name#}
+    {and user_id = #id#}"""
+sql1 = """select * from sys_user"""
+# (?<=#)(\S+)(?=#)
+# matchObj = re.match(r'[(](.*?)[)]', "select aa from (sys_user)")
+
+orm.select_list(sql, {'name': 'wfc', 'id': 0}, ["ps['name'] != None", "ps['id'] != 0"])
