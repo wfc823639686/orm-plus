@@ -6,7 +6,8 @@ db = None
 
 def connect(host, port, user, psw, db_name):
     global db
-    db = pymysql.connect(host=host, port=port, user=user, password=psw, database=db_name)
+    db = pymysql.connect(host=host, port=port, user=user, password=psw,
+                         database=db_name, cursorclass=pymysql.cursors.DictCursor)
 
 
 def query_one(sql):
@@ -18,7 +19,7 @@ def query_one(sql):
 def query_list(sql):
     cursor = db.cursor()
     cursor.execute(sql)
-    return cursor.fetchall()
+    return list(cursor.fetchall())
 
 
 def query_count(sql):
