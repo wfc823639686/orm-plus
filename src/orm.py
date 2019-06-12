@@ -22,12 +22,6 @@ def query_list(sql):
     return list(cursor.fetchall())
 
 
-def query_count(sql):
-    cursor = db.cursor()
-    cursor.execute(sql)
-    return cursor.fetchone()[0]
-
-
 class Field(object):
 
     def __int__(self, name, column_type, primary=False, notnull=True):
@@ -239,7 +233,36 @@ def rep_params(s, ps):
     return s
 
 
-def select_list(sql, ps, cdt, cl=None):
+def paging(sql, pi, size, cl=None):
+    if re.search('group by', sql, re.IGNORECASE):
+        count_sql = 'select count(0) from ({}) as count_num'.format(sql)
+    else:
+        count_sql = sql.replace('select .* from', sql, 1)
+    if pi == 1:
+        limit_str = ' limit {}'.format(size)
+    else:
+        limit_str = ' limit {}, {}'.format((pi - 1) * size, size)
+    cr = query_one(count_sql)
+    if cr and cr['count(0)'] != 0:
+        r = query_list(sql + limit_str)
+        if r and cl:
+            return enc(r, cl)
+        else:
+            return r
+    else:
+        return None
+
+
+def enc(r, cl):
+    results = []
+    for i in r:
+        a = cl()
+        a.set_dict(i)
+        results.append(a)
+    return results
+
+
+def select_list(sql, ps, cdt, cl=None, pi=0, size=10):
     ds = get_dynamic_sql(sql)
     if ds.__len__() != cdt.__len__():
         assert AttributeError('condition is error')
@@ -253,13 +276,11 @@ def select_list(sql, ps, cdt, cl=None):
     sql = sql.replace('{', '').replace('}', '')
     sql = rep_params(sql, ps)
     print('final: ' + sql)
-    r = query_list(sql)
-    if r and cl:
-        results = []
-        for i in r:
-            a = cl()
-            a.set_dict(i)
-            results.append(a)
-        return results
+    if pi == 0:
+        r = query_list(sql)
+        if r and cl:
+            return enc(r, cl)
+        else:
+            return r
     else:
-        return r
+        return paging(sql, pi, size, cl)

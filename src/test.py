@@ -52,6 +52,6 @@ params = {
     'endDate': None
 }
 cdt = ["ps['fjnm'].__len__() > 10", "ps['startDate'] != None", "ps['endDate'] != None"]
-r1 = orm.select_list(sql1, params, cdt, cl=User)
+r1 = orm.select_list(sql1, params, cdt, cl=User, pi=2)
 print(r1)
 print(json.dumps(r1, cls=je.JsonEncoder))
