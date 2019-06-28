@@ -123,14 +123,14 @@ class Model(dict, metaclass=ModelMetaclass):
 
     def update_by_id(self):
         fields, params, args = self.get_params(False)
-        sql = 'update {} set {} where {} = {}'\
+        sql = 'update {} set {} where {} = {}' \
             .format(self.__table__, ','.join(map(lambda x: x + '=?', fields)), self.__primary__,
                     getattr(self, self.name_mappings(self.__primary__), None))
         print('SQL: {}'.format(sql))
         print('ARGS: {}'.format(str(args)))
 
     def delete_by_id(self):
-        sql = 'delete from {} where {} = {}'\
+        sql = 'delete from {} where {} = {}' \
             .format(self.__table__, self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
         print('SQL: {}'.format(sql))
 
@@ -153,7 +153,7 @@ class Model(dict, metaclass=ModelMetaclass):
                     limit = '{}'.format(size)
                 else:
                     limit = '{}, {}'.format((pi - 1) * size, size)
-                sql = 'select {} from {} where {} limit {}'\
+                sql = 'select {} from {} where {} limit {}' \
                     .format(self._get_all_fields(), self.__table__, ew.get_where_sql(), limit)
                 print('SQL: {}'.format(sql))
                 return query_list(sql)
@@ -265,7 +265,7 @@ def enc(r, cl):
 def select_list(sql, ps, cdt, cl=None, pi=0, size=10):
     ds = get_dynamic_sql(sql)
     if ds.__len__() != cdt.__len__():
-        assert AttributeError('condition is error')
+        raise AttributeError('condition is error')
     for i, v in enumerate(ds):
         if eval(cdt[i]):
             s = ds[i]
