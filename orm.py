@@ -267,10 +267,13 @@ def select_list(sql, ps, cdt, cl=None, pi=0, size=10):
     if ds.__len__() != cdt.__len__():
         raise AttributeError('condition is error')
     for i, v in enumerate(ds):
-        if eval(cdt[i]):
-            s = ds[i]
-            sql = sql.replace(ds[i], s)
-        else:
+        try:
+            if eval(cdt[i]):
+                s = ds[i]
+                sql = sql.replace(ds[i], s)
+            else:
+                sql = sql.replace(ds[i], '')
+        except KeyError:
             sql = sql.replace(ds[i], '')
     print('src:' + sql)
     sql = sql.replace('{', '').replace('}', '')
