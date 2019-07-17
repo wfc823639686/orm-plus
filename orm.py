@@ -87,6 +87,14 @@ class Model(dict, metaclass=ModelMetaclass):
         for i in d.keys():
             self.setdefault(i, d[i])
 
+    def mapping_dict(self, d):
+        for i in d.keys():
+            try:
+                sr = self.name_mappings(i)
+                self.setdefault(sr, d[i])
+            except KeyError:
+                pass
+
     def __getattr__(self, key):
         try:
             return self[key]
@@ -257,7 +265,7 @@ def enc(r, cl):
     results = []
     for i in r:
         a = cl()
-        a.set_dict(i)
+        a.mapping_dict(i)
         results.append(a)
     return results
 
