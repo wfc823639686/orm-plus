@@ -182,7 +182,7 @@ class Model(dict, metaclass=ModelMetaclass):
     def select(cls, ew, pi=0, size=10):
         if pi != 0:
             count_sql = 'select count(0) from {} where {}'.format(cls.__table__, ew.get_where_sql())
-            cr = query_one(count_sql)
+            cr = query_one(count_sql)['count(0)']
             if cr != 0:
                 if pi == 1:
                     limit = '{}'.format(size)
@@ -200,11 +200,12 @@ class Model(dict, metaclass=ModelMetaclass):
             return cls.wrapper(query_list(sql))
 
 
-class Page(object):
+class Page(dict):
 
-    def __init__(self, total, data):
-        self.total = total
-        self.data = data
+    def __init__(self, total, list, **kwargs):
+        super().__init__(**kwargs)
+        self.setdefault('total', total)
+        self.setdefault('list', list)
 
 
 def to_str(x):
