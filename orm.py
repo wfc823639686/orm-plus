@@ -128,8 +128,9 @@ class Model(dict, metaclass=ModelMetaclass):
                 args.append(arg)
         return fields, params, args
 
-    def name_mappings(self, n):
-        return self.__name_mappings__[n]
+    @classmethod
+    def name_mappings(cls, n):
+        return cls.__name_mappings__[n]
 
     def insert(self):
         fields, params, args = self.get_params()
@@ -153,20 +154,34 @@ class Model(dict, metaclass=ModelMetaclass):
         print('SQL: {}'.format(sql))
         upd(sql)
 
-    def _get_all_fields(self):
-        r = ['{} AS `{}`'.format(self.__primary__, self.name_mappings(self.__primary__))]
-        for n in self.__mappings__:
-            r.append('{} AS `{}`'.format(n, self.__name_mappings__[n]))
+    @classmethod
+    def _get_all_fields(cls):
+        r = ['{} AS `{}`'.format(cls.__primary__, cls.name_mappings(cls.__primary__))]
+        for n in cls.__mappings__:
+            r.append('{} AS `{}`'.format(n, cls.__name_mappings__[n]))
         return ','.join(r)
 
-    def select_by_id(self, id):
-        sql = 'select {} from {} where {} = {}'.format(self._get_all_fields(), self.__table__, self.__primary__, id)
+    @classmethod
+    def select_by_id(cls, id):
+        sql = 'select {} from {} where {} = {}'.format(cls._get_all_fields(), cls.__table__, cls.__primary__, id)
         print('SQL: {}'.format(sql))
-        return query_one(sql)
+        r = cls()
+        r.set_dict(query_one(sql))
+        return r
 
-    def select(self, ew, pi=0, size=10):
+    @classmethod
+    def wrapper(cls, rs):
+        results = []
+        for item in rs:
+            r = cls()
+            r.set_dict(item)
+            results.append(r)
+        return results
+
+    @classmethod
+    def select(cls, ew, pi=0, size=10):
         if pi != 0:
-            count_sql = 'select count(0) from {} where {}'.format(self.__table__, ew.get_where_sql())
+            count_sql = 'select count(0) from {} where {}'.format(cls.__table__, ew.get_where_sql())
             cr = query_one(count_sql)
             if cr != 0:
                 if pi == 1:
@@ -174,14 +189,22 @@ class Model(dict, metaclass=ModelMetaclass):
                 else:
                     limit = '{}, {}'.format((pi - 1) * size, size)
                 sql = 'select {} from {} where {} limit {}' \
-                    .format(self._get_all_fields(), self.__table__, ew.get_where_sql(), limit)
+                    .format(cls._get_all_fields(), cls.__table__, ew.get_where_sql(), limit)
                 print('SQL: {}'.format(sql))
-                return query_list(sql)
+                r = cls.wrapper(query_list(sql))
+                return Page(cr, r)
         else:
             sql = 'select {} from {} where {}' \
-                .format(self._get_all_fields(), self.__table__, ew.get_where_sql())
+                .format(cls._get_all_fields(), cls.__table__, ew.get_where_sql())
             print('SQL: {}'.format(sql))
-            return query_list(sql)
+            return cls.wrapper(query_list(sql))
+
+
+class Page(object):
+
+    def __init__(self, total, data):
+        self.total = total
+        self.data = data
 
 
 def to_str(x):

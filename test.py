@@ -64,6 +64,9 @@ class User(orm.Model):
 # r = orm.select_list(sql, {'name': None}, ["ps['name'] != None"], cl=User)
 # print(r)
 
-user = User()
-r = user.select_by_id(2)
+# r = User.select_by_id(2)
+# print(r)
+ew = orm.EntityWrapper()
+ew.eq('us_name', 'wfc')
+r = User.select(ew, pi=1, size=10)
 print(r)
