@@ -55,11 +55,15 @@ class User(orm.Model):
 # r1 = orm.select_list(sql1, params, cdt, cl=User, pi=2)
 # print(r1)
 # print(json.dumps(r1, cls=je.JsonEncoder))
+#
+# sql = """
+#         select * from t_user
+#         where 1=1
+#         {and us_name = #name#}
+#     """
+# r = orm.select_list(sql, {'name': None}, ["ps['name'] != None"], cl=User)
+# print(r)
 
-sql = """
-        select * from t_user
-        where 1=1
-        {and us_name = #name#}
-    """
-r = orm.select_list(sql, {'name': None}, ["ps['name'] != None"], cl=User)
+user = User()
+r = user.select_by_id(2)
 print(r)

@@ -11,15 +11,23 @@ def connect(host, port, user, psw, db_name):
 
 
 def query_one(sql):
-    cursor = db.cursor()
-    cursor.execute(sql)
-    return cursor.fetchone()
+    with db.cursor() as cursor:
+        cursor.execute(sql)
+        return cursor.fetchone()
 
 
 def query_list(sql):
-    cursor = db.cursor()
-    cursor.execute(sql)
-    return list(cursor.fetchall())
+    with db.cursor() as cursor:
+        cursor.execute(sql)
+        return list(cursor.fetchall())
+
+
+def upd(sql, args=None):
+    if args is None:
+        args = []
+    with db.cursor() as cursor:
+        cursor.execute(sql, args)
+        db.commit()
 
 
 class Field(object):
@@ -112,11 +120,11 @@ class Model(dict, metaclass=ModelMetaclass):
             arg = getattr(self, self.__name_mappings__[k], None)
             if not is_all and arg is not None:
                 fields.append(k)
-                params.append('?')
+                params.append('%s')
                 args.append(arg)
             else:
                 fields.append(k)
-                params.append('?')
+                params.append('%s')
                 args.append(arg)
         return fields, params, args
 
@@ -128,19 +136,22 @@ class Model(dict, metaclass=ModelMetaclass):
         sql = 'insert into {} ({}) values ({})'.format(self.__table__, ','.join(fields), ','.join(params))
         print('SQL: {}'.format(sql))
         print('ARGS: {}'.format(str(args)))
+        upd(sql, args)
 
     def update_by_id(self):
         fields, params, args = self.get_params(False)
         sql = 'update {} set {} where {} = {}' \
-            .format(self.__table__, ','.join(map(lambda x: x + '=?', fields)), self.__primary__,
+            .format(self.__table__, ','.join(map(lambda x: x + '=%s', fields)), self.__primary__,
                     getattr(self, self.name_mappings(self.__primary__), None))
         print('SQL: {}'.format(sql))
         print('ARGS: {}'.format(str(args)))
+        upd(sql, args)
 
     def delete_by_id(self):
         sql = 'delete from {} where {} = {}' \
             .format(self.__table__, self.__primary__, getattr(self, self.name_mappings(self.__primary__), None))
         print('SQL: {}'.format(sql))
+        upd(sql)
 
     def _get_all_fields(self):
         r = ['{} AS `{}`'.format(self.__primary__, self.name_mappings(self.__primary__))]
@@ -151,6 +162,7 @@ class Model(dict, metaclass=ModelMetaclass):
     def select_by_id(self, id):
         sql = 'select {} from {} where {} = {}'.format(self._get_all_fields(), self.__table__, self.__primary__, id)
         print('SQL: {}'.format(sql))
+        return query_one(sql)
 
     def select(self, ew, pi=0, size=10):
         if pi != 0:
